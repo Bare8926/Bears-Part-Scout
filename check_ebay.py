@@ -158,12 +158,15 @@ def notify_matches(matches: List[dict], config):
     html_content = '\n'.join(html_lines)
     method = os.getenv('EMAIL_METHOD', 'sendgrid').lower()
     logging.info('Sending email via %s', method)
-    if method == 'sendgrid':
-        send_email_sendgrid(to_email, subject, html_content)
-    elif method == 'smtp':
-        send_email_smtp(to_email, subject, html_content)
-    else:
-        raise RuntimeError('Unknown EMAIL_METHOD')
+    try:
+        if method == 'sendgrid':
+            send_email_sendgrid(to_email, subject, html_content)
+        elif method == 'smtp':
+            send_email_smtp(to_email, subject, html_content)
+        else:
+            logging.warning('Unknown EMAIL_METHOD: %s - skipping notification', method)
+    except Exception as e:
+        logging.warning('Failed to send email notification: %s - matches will still be tracked', e)
 
 
 def main():
