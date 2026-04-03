@@ -9,7 +9,7 @@ import re
 import time
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 print("=== RARE PARTS HUNTER STARTING ===", flush=True)
 
@@ -33,124 +33,63 @@ def save_seen(seen):
     with open(SEEN_PATH, 'w') as f:
         json.dump(list(seen), f)
 
-def fetch_with_retry(url, max_retries=3):
-    headers_list = [
-        {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-        },
+def scrape_listings(query):
+    # Try different eBay endpoints
+    endpoints = [
+        # Regular search
+        f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sop=10",
+        # Using different URL format
+        f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&LH_BIN=1&_sop=10",
+        # Try the new v3 API
+        f"https://www.ebay.com/buy/browseapi/v1/find?keywords={quote_plus(query)}&limit=48",
     ]
     
-    for attempt in range(max_retries):
-        headers = headers_list[attempt % len(headers_list)]
-        
-        print(f"Attempt {attempt + 1}: Fetching {url}", flush=True)
-        
-        session = requests.Session()
-        session.headers.update(headers)
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/html, */*',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Referer': 'https://www.ebay.com/',
+    })
+    
+    for url in endpoints[:1]:  # Try first one
+        print(f"Trying: {url[:80]}...", flush=True)
         
         try:
             resp = session.get(url, timeout=30)
-            print(f"Response status: {resp.status_code}", flush=True)
+            print(f"Status: {resp.status_code}, Content-Type: {resp.headers.get('Content-Type', 'unknown')}", flush=True)
             
-            if resp.status_code == 200:
-                return resp
-            elif resp.status_code == 503:
-                wait_time = (attempt + 1) * 5
-                print(f"503 error, waiting {wait_time} seconds before retry...", flush=True)
-                time.sleep(wait_time)
-            else:
-                return resp
-                
+            # Check if it's JSON
+            if 'application/json' in resp.headers.get('Content-Type', ''):
+                print("Response is JSON!", flush=True)
+                try:
+                    data = resp.json()
+                    print(f"JSON keys: {list(data.keys()) if isinstance(data, dict) else 'list'}", flush=True)
+                except:
+                    pass
+            
+            # Check for inline JSON data in HTML
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            
+            # Look for script tags with JSON data
+            scripts = soup.find_all('script', type=re.compile('application/ld\+json|application/json'))
+            print(f"Found {len(scripts)} JSON scripts", flush=True)
+            
+            # Look for data in __INITIAL_STATE__ or similar
+            for script in scripts[:3]:
+                if script.string:
+                    print(f"Script preview: {script.string[:200]}...", flush=True)
+            
+            # Try finding items by looking at all text content
+            text_content = soup.get_text()[:500]
+            print(f"Page text preview: {text_content}", flush=True)
+            
+            return []
+            
         except Exception as e:
             print(f"Error: {e}", flush=True)
-            time.sleep(3)
     
-    return None
-
-def scrape_listings(query):
-    url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sop=10"
-    
-    resp = fetch_with_retry(url)
-    if not resp:
-        print("Failed to fetch after retries", flush=True)
-        return []
-    
-    if resp.status_code != 200:
-        print(f"ERROR: eBay returned {resp.status_code}", flush=True)
-        return []
-    
-    soup = BeautifulSoup(resp.text, 'html.parser')
-    
-    # Find all links that point to /itm/
-    items = soup.find_all('a', href=re.compile(r'/itm/\d+'))
-    
-    print(f"Found {len(items)} item links", flush=True)
-    
-    # Debug: print first 3 links and their text
-    for i, link in enumerate(items[:3]):
-        print(f"Link {i}: href={link.get('href', '')[:60]}", flush=True)
-        print(f"  text='{link.get_text(strip=True)}'", flush=True)
-        print(f"  parent={link.parent.name if link.parent else 'None'}", flush=True)
-    
-    results = []
-    seen_ids = set()
-    
-    for link in items:
-        href = link.get('href', '')
-        
-        # Extract item ID
-        id_match = re.search(r'/itm/(\d+)', href)
-        if not id_match:
-            continue
-        item_id = id_match.group(1)
-        
-        if item_id in seen_ids:
-            continue
-        seen_ids.add(item_id)
-        
-        # Get title - multiple ways
-        title = link.get_text(strip=True)
-        
-        # If still no title, try parent
-        if not title or title == 'Shop on eBay':
-            parent = link.parent
-            if parent:
-                # Try to find any text in parent
-                title = parent.get_text(strip=True)[:100]
-        
-        if not title or title == 'Shop on eBay':
-            print(f"Skipping - no valid title: '{title}'", flush=True)
-            continue
-        
-        # Clean up title
-        title = title[:100]
-        
-        # Get price
-        price = 9999999.0
-        parent = link.parent
-        if parent:
-            price_elem = parent.select_one('.s-item__price')
-            if not price_elem:
-                price_elem = parent.select_one('.price')
-            if price_elem:
-                price_text = price_elem.get_text(strip=True)
-                price_match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
-                if price_match:
-                    try:
-                        price = float(price_match.group())
-                    except:
-                        pass
-        
-        results.append({
-            'id': item_id,
-            'title': title,
-            'price': price,
-            'link': href
-        })
-    
-    return results
+    return []
 
 def send_email_sendgrid(to_email, subject, html_content):
     api_key = os.getenv('SENDGRID_API_KEY')
@@ -168,10 +107,6 @@ def send_email_sendgrid(to_email, subject, html_content):
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
     r = requests.post(url, headers=headers, json=payload)
     print(f"SendGrid response: {r.status_code}", flush=True)
-    if r.status_code >= 400:
-        print(f"SendGrid error: {r.text}", flush=True)
-    else:
-        print("Email sent successfully!", flush=True)
 
 def notify_matches(matches, config):
     if not matches:
@@ -185,7 +120,6 @@ def notify_matches(matches, config):
     html_lines.append('</ul>')
     html_content = '\n'.join(html_lines)
     method = os.getenv('EMAIL_METHOD', 'sendgrid').lower()
-    print(f"Sending email via {method}", flush=True)
     if method == 'sendgrid':
         send_email_sendgrid(to_email, subject, html_content)
 
@@ -197,22 +131,15 @@ def main():
     print(f"Searching for: {query} (max ${max_price})", flush=True)
     
     items = scrape_listings(query)
-    print(f"=== FOUND {len(items)} PARSED ITEMS ===", flush=True)
     
     new_matches = []
     for it in items:
-        if not it['id']:
-            continue
         if it['id'] in seen:
             continue
         if it['price'] <= max_price:
             print(f"NEW MATCH: {it['title']} — ${it['price']}", flush=True)
             new_matches.append(it)
             seen.add(it['id'])
-        else:
-            print(f"Too expensive: {it['title'][:50]} — ${it['price']}", flush=True)
-    
-    print(f"=== {len(new_matches)} NEW MATCHES ===", flush=True)
     
     if new_matches:
         notify_matches(new_matches, config)
