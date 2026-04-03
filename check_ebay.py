@@ -36,23 +36,14 @@ def scrape_listings(query):
     url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sop=10"
     print(f"Fetching: {url}", flush=True)
     
-    # More realistic browser headers
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0',
-        'TE': 'Trailers',
     }
     
-    # Use a session to persist cookies
     session = requests.Session()
     session.headers.update(headers)
     
@@ -64,44 +55,54 @@ def scrape_listings(query):
         return []
     
     soup = BeautifulSoup(resp.text, 'html.parser')
-    items = []
     
-    # Try multiple selectors for items
-    item_selectors = ['.s-item', '.srp-results .srp-item', '[data-viewport]', 'li.s-item']
-    
-    for selector in item_selectors:
-        items = soup.select(selector)
-        if items:
-            print(f"Found {len(items)} items with selector: {selector}", flush=True)
-            break
-    
+    # Find ALL list items - try multiple approaches
+    items = soup.find_all('li', class_=re.compile('s-item'))
     if not items:
-        print("No items found - eBay may be blocking or page structure changed", flush=True)
-        return []
+        items = soup.select('ul.srp-list li')
+    if not items:
+        items = soup.select('.srp-results li')
+    if not items:
+        items = soup.find_all('li', recursive=False)
+    
+    print(f"Found {len(items)} raw list items", flush=True)
     
     results = []
     for item in items:
-        title_tag = item.select_one('.s-item__title, .itmtitle, h3')
-        title = title_tag.get_text(strip=True) if title_tag else ''
+        # Try multiple ways to get title
+        title = ""
+        for selector in ['.s-item__title', '.itmtitle', 'h3', '.item-title', '[itemprop="name"]']:
+            title_elem = item.select_one(selector)
+            if title_elem:
+                title = title_elem.get_text(strip=True)
+                break
         
-        if not title or title == 'Shop on eBay':
+        if not title:
+            continue
+        if 'Shop on eBay' in title:
             continue
             
-        link_tag = item.select_one('.s-item__link, a[href*="/itm/"]')
-        link = link_tag.get('href', '') if link_tag else ''
+        # Get link
+        link = ""
+        for selector in ['.s-item__link', 'a[href*="/itm/"]', 'a.item-link']:
+            link_elem = item.select_one(selector)
+            if link_elem:
+                link = link_elem.get('href', '')
+                break
         
-        price_tag = item.select_one('.s-item__price, .price')
-        price_text = price_tag.get_text(strip=True) if price_tag else ''
-        
-        # Parse price
+        # Get price
         price = 9999999.0
-        if price_text:
-            price_match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
-            if price_match:
-                try:
-                    price = float(price_match.group())
-                except:
-                    pass
+        for selector in ['.s-item__price', '.price', '.item-price']:
+            price_elem = item.select_one(selector)
+            if price_elem:
+                price_text = price_elem.get_text(strip=True)
+                price_match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
+                if price_match:
+                    try:
+                        price = float(price_match.group())
+                    except:
+                        pass
+                break
         
         # Get item ID
         item_id = None
@@ -112,12 +113,13 @@ def scrape_listings(query):
             else:
                 item_id = link
         
-        results.append({
-            'id': item_id,
-            'title': title,
-            'price': price,
-            'link': link
-        })
+        if item_id:
+            results.append({
+                'id': item_id,
+                'title': title,
+                'price': price,
+                'link': link
+            })
     
     return results
 
@@ -166,7 +168,7 @@ def main():
     print(f"Searching for: {query} (max ${max_price})", flush=True)
     
     items = scrape_listings(query)
-    print(f"=== FOUND {len(items)} ITEMS ===", flush=True)
+    print(f"=== FOUND {len(items)} PARSED ITEMS ===", flush=True)
     
     new_matches = []
     for it in items:
@@ -178,6 +180,8 @@ def main():
             print(f"NEW MATCH: {it['title']} — ${it['price']}", flush=True)
             new_matches.append(it)
             seen.add(it['id'])
+        else:
+            print(f"Too expensive: {it['title'][:50]} — ${it['price']}", flush=True)
     
     print(f"=== {len(new_matches)} NEW MATCHES ===", flush=True)
     
