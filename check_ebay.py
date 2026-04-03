@@ -6,6 +6,7 @@ import os
 import json
 import sys
 import re
+import time
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
@@ -32,19 +33,64 @@ def save_seen(seen):
     with open(SEEN_PATH, 'w') as f:
         json.dump(list(seen), f)
 
+def fetch_with_retry(url, max_retries=3):
+    """Fetch URL with retry logic"""
+    
+    headers_list = [
+        {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+        },
+        {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+        },
+        {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+        }
+    ]
+    
+    for attempt in range(max_retries):
+        headers = headers_list[attempt % len(headers_list)]
+        
+        print(f"Attempt {attempt + 1}: Fetching {url}", flush=True)
+        
+        session = requests.Session()
+        session.headers.update(headers)
+        
+        try:
+            resp = session.get(url, timeout=30)
+            print(f"Response status: {resp.status_code}", flush=True)
+            
+            if resp.status_code == 200:
+                return resp
+            elif resp.status_code == 503:
+                # Wait before retry
+                wait_time = (attempt + 1) * 5
+                print(f"503 error, waiting {wait_time} seconds before retry...", flush=True)
+                time.sleep(wait_time)
+            else:
+                return resp
+                
+        except Exception as e:
+            print(f"Error: {e}", flush=True)
+            time.sleep(3)
+    
+    return None
+
 def scrape_listings(query):
     url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sop=10"
-    print(f"Fetching: {url}", flush=True)
     
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    }
-    
-    session = requests.Session()
-    session.headers.update(headers)
-    
-    resp = session.get(url, timeout=30)
-    print(f"Response status: {resp.status_code}", flush=True)
+    resp = fetch_with_retry(url)
+    if not resp:
+        print("Failed to fetch after retries", flush=True)
+        return []
     
     if resp.status_code != 200:
         print(f"ERROR: eBay returned {resp.status_code}", flush=True)
@@ -56,14 +102,6 @@ def scrape_listings(query):
     items = soup.find_all('a', href=re.compile(r'/itm/\d+'))
     
     print(f"Found {len(items)} item links", flush=True)
-    
-    # Print first item for debugging
-    if items:
-        print(f"First item href: {items[0].get('href', '')}", flush=True)
-        parent = items[0].parent
-        if parent:
-            print(f"Parent tag: {parent.name}", flush=True)
-            print(f"Parent attrs: {parent.attrs}", flush=True)
     
     results = []
     seen_ids = set()
@@ -81,10 +119,9 @@ def scrape_listings(query):
             continue
         seen_ids.add(item_id)
         
-        # Get title - try parent elements
+        # Get title
         title = link.get_text(strip=True)
         if not title:
-            # Try to find title in parent or sibling
             parent = link.parent
             if parent:
                 title_elem = parent.select_one('.s-item__title, h3, .item-title')
@@ -94,7 +131,7 @@ def scrape_listings(query):
         if not title or title == 'Shop on eBay':
             continue
         
-        # Get price - look in parent/sibling
+        # Get price
         price = 9999999.0
         parent = link.parent
         if parent:
