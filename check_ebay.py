@@ -175,20 +175,26 @@ def main():
     max_price = float(config.get('max_price', 9999999))
     seen = load_seen()
     items = scrape_listings(query)
-    logging.info('Found %d items', len(items))
+    print(f'=== FOUND {len(items)} TOTAL ITEMS ===')
     new_matches = []
     for it in items:
         if not it['id']:
             continue
         if it['id'] in seen:
+            print(f'Seen (skipping): {it["title"]}')
             continue
         if it['price'] <= max_price:
+            print(f'NEW MATCH: {it["title"]} — ${it["price"]}')
             new_matches.append(it)
             seen.add(it['id'])
+        else:
+            print(f'Too expensive (skipping): {it["title"]} — ${it["price"]}')
+    print(f'=== {len(new_matches)} NEW MATCHES UNDER ${max_price} ===')
     if new_matches:
+        print('=== SENDING EMAIL NOTIFICATION ===')
         notify_matches(new_matches, config)
     save_seen(seen)
-    logging.info('Done')
+    print('=== DONE ===')
 
 
 if __name__ == '__main__':
