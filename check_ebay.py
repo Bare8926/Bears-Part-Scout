@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-Rare Parts Hunter - eBay scraper
+Rare Parts Hunter - eBay Finding API
+Uses official eBay Finding API (free)
 """
 import os
 import json
 import sys
 import re
-import time
 import requests
-from bs4 import BeautifulSoup
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import quote_plus
 
 print("=== RARE PARTS HUNTER STARTING ===", flush=True)
 
@@ -33,63 +32,83 @@ def save_seen(seen):
     with open(SEEN_PATH, 'w') as f:
         json.dump(list(seen), f)
 
-def scrape_listings(query):
-    # Try different eBay endpoints
-    endpoints = [
-        # Regular search
-        f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sop=10",
-        # Using different URL format
-        f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&LH_BIN=1&_sop=10",
-        # Try the new v3 API
-        f"https://www.ebay.com/buy/browseapi/v1/find?keywords={quote_plus(query)}&limit=48",
-    ]
+def scrape_ebay_api(query, max_price):
+    """Use eBay Finding API"""
     
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/html, */*',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Referer': 'https://www.ebay.com/',
-    })
+    # eBay Finding API endpoint
+    endpoint = "https://svcs.ebay.com/services/search/FindingService/v1"
     
-    for url in endpoints[:1]:  # Try first one
-        print(f"Trying: {url[:80]}...", flush=True)
+    app_id = os.getenv('EBAY_APP_ID')
+    if not app_id:
+        print("ERROR: EBAY_APP_ID not set in secrets!", flush=True)
+        print("Get free API key at: https://developer.ebay.com/api-keys", flush=True)
+        return []
+    
+    params = {
+        'OPERATION-NAME': 'findItemsByKeywords',
+        'SERVICE-VERSION': '1.13.0',
+        'SECURITY-APPNAME': app_id,
+        'RESPONSE-DATA-FORMAT': 'JSON',
+        'keywords': query,
+        'itemFilter(0).name': 'MaxPrice',
+        'itemFilter(0).value': str(max_price),
+        'itemFilter(0).paramName': 'Currency',
+        'itemFilter(0).paramValue': 'USD',
+        'paginationInput.entriesPerPage': '50',
+    }
+    
+    print(f"Calling eBay Finding API for: {query}", flush=True)
+    
+    try:
+        resp = requests.get(endpoint, params=params, timeout=30)
+        print(f"Response status: {resp.status_code}", flush=True)
         
-        try:
-            resp = session.get(url, timeout=30)
-            print(f"Status: {resp.status_code}, Content-Type: {resp.headers.get('Content-Type', 'unknown')}", flush=True)
-            
-            # Check if it's JSON
-            if 'application/json' in resp.headers.get('Content-Type', ''):
-                print("Response is JSON!", flush=True)
-                try:
-                    data = resp.json()
-                    print(f"JSON keys: {list(data.keys()) if isinstance(data, dict) else 'list'}", flush=True)
-                except:
-                    pass
-            
-            # Check for inline JSON data in HTML
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            
-            # Look for script tags with JSON data
-            scripts = soup.find_all('script', type=re.compile('application/ld\+json|application/json'))
-            print(f"Found {len(scripts)} JSON scripts", flush=True)
-            
-            # Look for data in __INITIAL_STATE__ or similar
-            for script in scripts[:3]:
-                if script.string:
-                    print(f"Script preview: {script.string[:200]}...", flush=True)
-            
-            # Try finding items by looking at all text content
-            text_content = soup.get_text()[:500]
-            print(f"Page text preview: {text_content}", flush=True)
-            
+        if resp.status_code != 200:
+            print(f"Error: {resp.text[:500]}", flush=True)
             return []
+        
+        data = resp.json()
+        
+        # Check for errors
+        if 'findItemsByKeywordsResponse' in data:
+            response = data['findItemsByKeywordsResponse']
             
-        except Exception as e:
-            print(f"Error: {e}", flush=True)
-    
-    return []
+            if 'ack' in response:
+                ack = response['ack']
+                print(f"API ack: {ack}", flush=True)
+            
+            if 'searchResult' in response:
+                search_result = response['searchResult']
+                
+                if 'item' in search_result:
+                    items = search_result['item']
+                    print(f"Found {len(items)} items via API", flush=True)
+                    
+                    results = []
+                    for item in items:
+                        try:
+                            item_id = item.get('itemId', '')
+                            title = item.get('title', '')
+                            price = float(item.get('sellingStatus', [{}])[0].get('currentPrice', [{}])[0].get('value', '999999'))
+                            link = item.get('viewItemURL', '')
+                            
+                            results.append({
+                                'id': item_id,
+                                'title': title,
+                                'price': price,
+                                'link': link
+                            })
+                        except Exception as e:
+                            print(f"Error parsing item: {e}", flush=True)
+                    
+                    return results
+        
+        print(f"Response: {str(data)[:500]}", flush=True)
+        return []
+        
+    except Exception as e:
+        print(f"Exception: {e}", flush=True)
+        return []
 
 def send_email_sendgrid(to_email, subject, html_content):
     api_key = os.getenv('SENDGRID_API_KEY')
@@ -130,16 +149,21 @@ def main():
     seen = load_seen()
     print(f"Searching for: {query} (max ${max_price})", flush=True)
     
-    items = scrape_listings(query)
+    items = scrape_ebay_api(query, max_price)
+    print(f"=== FOUND {len(items)} ITEMS ===", flush=True)
     
     new_matches = []
     for it in items:
+        if not it['id']:
+            continue
         if it['id'] in seen:
             continue
         if it['price'] <= max_price:
-            print(f"NEW MATCH: {it['title']} — ${it['price']}", flush=True)
+            print(f"NEW MATCH: {it['title'][:50]} — ${it['price']}", flush=True)
             new_matches.append(it)
             seen.add(it['id'])
+    
+    print(f"=== {len(new_matches)} NEW MATCHES ===", flush=True)
     
     if new_matches:
         notify_matches(new_matches, config)
