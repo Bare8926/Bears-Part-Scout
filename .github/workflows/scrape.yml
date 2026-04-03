@@ -1,23 +1,28 @@
-name: Rare Parts Hunter Scrape
+name: Run eBay Scraper
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # every 6 hours at minute 0
-  workflow_dispatch: {}
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4
+          pip install beautifulsoup4 requests
+
       - name: Run scraper
         env:
           EMAIL_METHOD: ${{ secrets.EMAIL_METHOD }}
@@ -26,5 +31,4 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
-        run: |
-          python check_ebay.py
+        run: python check_ebay.py
