@@ -170,6 +170,7 @@ def notify_matches(matches: List[dict], config):
 
 
 def main():
+    print("=== RARE PARTS HUNTER STARTING ===")
     config = load_config()
     query = config['query']
     max_price = float(config.get('max_price', 9999999))
