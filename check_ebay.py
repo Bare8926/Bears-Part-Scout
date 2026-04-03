@@ -34,26 +34,12 @@ def save_seen(seen):
         json.dump(list(seen), f)
 
 def fetch_with_retry(url, max_retries=3):
-    """Fetch URL with retry logic"""
-    
     headers_list = [
         {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
         },
-        {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-        },
-        {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-        }
     ]
     
     for attempt in range(max_retries):
@@ -71,7 +57,6 @@ def fetch_with_retry(url, max_retries=3):
             if resp.status_code == 200:
                 return resp
             elif resp.status_code == 503:
-                # Wait before retry
                 wait_time = (attempt + 1) * 5
                 print(f"503 error, waiting {wait_time} seconds before retry...", flush=True)
                 time.sleep(wait_time)
@@ -103,6 +88,12 @@ def scrape_listings(query):
     
     print(f"Found {len(items)} item links", flush=True)
     
+    # Debug: print first 3 links and their text
+    for i, link in enumerate(items[:3]):
+        print(f"Link {i}: href={link.get('href', '')[:60]}", flush=True)
+        print(f"  text='{link.get_text(strip=True)}'", flush=True)
+        print(f"  parent={link.parent.name if link.parent else 'None'}", flush=True)
+    
     results = []
     seen_ids = set()
     
@@ -119,23 +110,30 @@ def scrape_listings(query):
             continue
         seen_ids.add(item_id)
         
-        # Get title
+        # Get title - multiple ways
         title = link.get_text(strip=True)
-        if not title:
+        
+        # If still no title, try parent
+        if not title or title == 'Shop on eBay':
             parent = link.parent
             if parent:
-                title_elem = parent.select_one('.s-item__title, h3, .item-title')
-                if title_elem:
-                    title = title_elem.get_text(strip=True)
+                # Try to find any text in parent
+                title = parent.get_text(strip=True)[:100]
         
         if not title or title == 'Shop on eBay':
+            print(f"Skipping - no valid title: '{title}'", flush=True)
             continue
+        
+        # Clean up title
+        title = title[:100]
         
         # Get price
         price = 9999999.0
         parent = link.parent
         if parent:
-            price_elem = parent.select_one('.s-item__price, .price')
+            price_elem = parent.select_one('.s-item__price')
+            if not price_elem:
+                price_elem = parent.select_one('.price')
             if price_elem:
                 price_text = price_elem.get_text(strip=True)
                 price_match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
@@ -147,7 +145,7 @@ def scrape_listings(query):
         
         results.append({
             'id': item_id,
-            'title': title[:100],
+            'title': title,
             'price': price,
             'link': href
         })
