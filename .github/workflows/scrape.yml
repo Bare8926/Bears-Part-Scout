@@ -1,7 +1,8 @@
-name: Run eBay Scraper
+name: Run Bears Part Scout Scraper
 
 on:
   schedule:
+    # Run every 6 hours to keep data fresh
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
@@ -12,23 +13,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
+          node-version: '20'
 
-      - name: Install dependencies
-        run: |
-          pip install beautifulsoup4 requests
-
-      - name: Run scraper
+      - name: Run Apify Integration
         env:
-          EMAIL_METHOD: ${{ secrets.EMAIL_METHOD }}
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: |
-          ls -la
-          python check_ebay.py 2>&1
+          node apify_integration.js "honda civic parts" > scraper.log 2>&1
+          cat scraper.log
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-results
+          path: search_results.json
+
+      - name: Commit results to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update search results"
+          file_pattern: search_results.json
