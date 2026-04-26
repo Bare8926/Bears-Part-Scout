@@ -1,0 +1,18 @@
+{
+  "searches": [
+    {
+      "query": "honda civic brake calipers",
+      "maxPrice": 600
+    },
+    {
+      "query": "toyota camry transmission",
+      "maxPrice": 1200
+    },
+    {
+      "query": "ford f150 engine",
+      "maxPrice": 2500
+    }
+  ],
+  "maxPriceDefault": 1000,
+  "searchRadius": 100
+}
