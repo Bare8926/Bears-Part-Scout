@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bears Part Scout - Find Rare Auto Parts</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        
+        :root {
+            --primary: #e63946;
+            --primary-dark: #c1121f;
+            --secondary: #1d3557;
+            --accent: #f4a261;
+            --light: #f1faee;
+            --dark: #1d3557;
+            --gray: #6c757d;
+            --success: #2a9d8f;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #5a5a5a 0%, #6a6a6a 50%, #5a5a5a 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        header {
+            text-align: center;
+            padding: 30px 0;
+        }
+        
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .logo svg {
+            width: 280px;
+            height: 120px;
+        }
+        
+        .logo h1 {
+            font-size: 2.5rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .tagline {
+            color: #888;
+            font-size: 1rem;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            background: rgba(50,50,50,0.8);
+            padding: 8px;
+            border-radius: 50px;
+            border: 1px solid #444;
+        }
+        
+        nav button {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        nav button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        nav button.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4);
+        }
+        
+        /* Content Cards */
+        .card {
+            background: linear-gradient(145deg, #2a2a2a 0%, #222 100%);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h2 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Form Elements */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+        
+        .card p {
+            color: #aaa;
+        }
+        
+        input, select {
+            padding: 12px 15px;
+            border: 2px solid #555;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            background: #2a2a2a;
+            color: #fff;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(230, 57, 70, 0.4);
+        } .btn-secondary {
+            background: var(--secondary);
+        }
+        
+        .btn-secondary:hover {
+            background: #152744;
+        }
+        
+        /* Search Results */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .result-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #444;
+            transition: all 0.3s ease;
+        }
+        
+        .result-card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-5px);
+        }
+        
+        .result-card h3 {
+            color: #fff;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        
+        .result-card .price {
+            color: var(--success);
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .result-card .location {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .result-card .platform {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .platform-craigslist { background: #007a5a; color: #fff; }
+        .platform-facebook { background: #1877f2; color: #fff; }
+        .platform-ebay { background: #e53238; color: #fff; }
+        
+        .result-card a {
+            display: inline-block;
+            margin-top: 15px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .result-card a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        
+        /* About Section */
+        .about-section {
+            color: #ccc;
+            line-height: 1.8;
+        }
+        
+        .about-section h3 {
+            color: #fff;
+            margin: 20px 0 10px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .feature-item {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        
+        .feature-item strong {
+            color: var(--accent);
+        }
+        
+        /* Request Form */
+        .request-form {
+            max-width: 600px;
+        }
+        
+        .request-form input,
+        .request-form textarea,
+        .request-form select {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .request-form textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        /* Diagnostic Tool */
+        .code-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .code-input input {
+            flex: 1;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+        }
+        
+        .code-result {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .code-result h4 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+        
+        .severity {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .severity-warning { background: #f4a261; color: #000; }
+        .severity-critical { background: #e63946; color: #fff; }
+        .severity-info { background: #2a9d8f; color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container"> <header>
+            <div class="logo">
+                <svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="bearGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#8B4513"/>
+                            <stop offset="100%" style="stop-color:#D2691E"/>
+                        </linearGradient>
+                    </defs>
+                    <circle cx="40" cy="40" r="30" fill="url(#bearGrad)"/>
+                    <ellipse cx="28" cy="32" rx="3" ry="4" fill="#000"/>
+                    <ellipse cx="52" cy="32" rx="3" ry="4" fill="#000"/>
+                    <ellipse cx="40" cy="45" rx="8" ry="6" fill="#000"/>
+                    <path d="M 30 52 Q 40 58 50 52" stroke="#000" stroke-width="2" fill="none"/>
+                    <circle cx="32" cy="28" r="3" fill="#FFF"/>
+                    <circle cx="48" cy="28" r="3" fill="#FFF"/>
+                    <text x="75" y="35" font-family='Arial Black' font-size="22" font-weight="bold" fill="#FFF">BEARS</text>
+                    <text x="75" y="60" font-family='Arial' font-size="18" fill="#CCC">PART SCOUT</text>
+                </svg>
+            </div>
+            <p class="tagline">Your Personal Auto Parts Hunter</p>
+        </header>
+        
+        <nav>
+            <button class="active" onclick="showTab('search')">🔍 Find Parts</button>
+            <button onclick="showTab('vehicles')">🚙 Find Vehicles</button>
+            <button onclick="showTab('crossref')">🔄 Cross Reference</button>
+            <button onclick="showTab('request')">📩 Request Vehicle</button>
+            <button onclick="showTab('diagnostics')">🔧 Diagnostics</button>
+            <button onclick="showTab('dashlights')">💡 Dash Lights</button>
+            <button onclick="showTab('about')">ℹ️ About</button>
+        </nav>
+        
+        <!-- Search Parts Tab -->
+        <div id="search" class="tab-content active">
+            <div class="card">
+                <h2>🔍 Find Auto Parts</h2>
+                <p style="color: #e0e0e0;">Search for parts across Craigslist, Facebook Marketplace, and eBay.</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="searchYear">Year</label>
+                        <select id="searchYear">
+                            <option value="">Select Year</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchMake">Make</label>
+                        <select id="searchMake">
+                            <option value="">Select Make</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchModel">Model</label>
+                        <select id="searchMake">
+                            <option value="">Select Model</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchTrim">Trim (Optional)</label>
+                        <select id="searchTrim">
+                            <option value="">Any Trim</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchPart">Part Name</label>
+                        <input type="text" id="searchPart" placeholder="e.g. brake calipers">
+                    </div>
+                    <div class="form-group">
+                        <label for="searchPrice">Max Price</label>
+                        <input type="number" id="searchPrice" placeholder="$">
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="searchParts()">🔍 Search Parts</button>
+                
+                <div id="partsResults" class="results-grid"></div>
+            </div>
+        </div>
+        
+        <!-- Find Vehicles Tab -->
+        <div id="vehicles" class="tab-content">
+            <div class="card">
+                <h2>🚙 Find Vehicles</h2>
+                <p style="color: #e0e0e0;">Search whole vehicles from Craigslist and Facebook Marketplace.</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="vehicleYear">Year</label>
+                        <select id="vehicleYear">
+                            <option value="">Select Year</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicleMake">Make</label>
+                        <select id="vehicleMake">
+                            <option value="">Select Make</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicleModel">Model</label>
+                        <select id="vehicleModel">
+                            <option value="">Select Model</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicleTrim">Trim (Optional)</label>
+                        <select id="vehicleTrim">
+                            <option value="">Any Trim</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehiclePrice">Max Price</label>
+                        <input type="number" id="vehiclePrice" placeholder="$">
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="searchVehicles()">🔍 Search Vehicles</button>
+                
+                <div id="vehicleResults" class="results-grid"></div>
+            </div>
+        </div>
+        
+        <!-- Cross Reference Tab -->
+        <div id="crossref" class="tab-content">
+            <div class="card">
+                <h2>🔄 Cross Reference</h2>
+                <p style="color: #e0e0e0;">Find what vehicles a part fits. Enter a part name to see interchanges.</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="crossPart">Part Name</label>
+                        <input type="text" id="crossPart" placeholder="e.g. brake caliper">
+                    </div>
+                    <div class="form-group">
+                        <label for="crossMake">Vehicle Make</label>
+                        <select id="crossMake">
+                            <option value="">Select Make</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="crossModel">Vehicle Model</label>
+                        <select id="crossModel">
+                            <option value="">Select Model</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="crossYear">Year</label>
+                        <select id="crossYear">
+                            <option value="">Select Year</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="crossReference()">🔍 Find Interchanges</button>
+                
+                <div id="crossResults" class="results-grid"></div>
+            </div>
+        </div>
+        
+        <!-- Request Vehicle Tab -->
+        <div id="request" class="tab-content">
+            <div class="card">
+                <h2>📩 Request a Vehicle</h2>
+                <p style="color: #e0e0e0;">Can't find what you're looking for? Let us know and we'll alert you!</p>
+                
+                <div class="request-form">
+                    <div class="form-group">
+                        <label for="reqName">Your Name</label>
+                        <input type="text" id="reqName" placeholder="Your name">
+                    </div>
+                    <div class="form-group">
+                        <label for="reqEmail">Email</label>
+                        <input type="email" id="reqEmail" placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="reqYear">Year</label>
+                        <select id="reqYear">
+                            <option value="">Select Year</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reqMake">Make</label>
+                        <select id="reqMake">
+                            <option value="">Select Make</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reqModel">Model</label>
+                        <select id="reqModel">
+                            <option value="">Select Model</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reqDetails">Details</label>
+                        <textarea id="reqDetails" placeholder="Any specific details, parts needed, budget, etc."></textarea>
+                    </div>
+                    
+                    <button class="btn" onclick="submitRequest()">📩 Submit Request</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Diagnostics Tab -->
+        <div id="diagnostics" class="tab-content">
+            <div class="card">
+                <h2>🔧 OBD-II Diagnostics</h2>
+                <p style="color: #e0e0e0;">Look up diagnostic trouble codes (DTCs) to understand what your check engine light means.</p>
+                
+                <div class="code-input">
+                    <input type="text" id="diagnosticCode" placeholder="Enter code (e.g. P0301)" maxlength="7">
+                    <button class="btn" onclick="lookupCode()">🔍 Look Up</button>
+                </div>
+                
+                <div id="diagnosticResult" class="code-result" style="display:none;"></div>
+            </div>
+        </div> <!-- Dashboard Lights Tab -->
+        <div id="dashlights" class="tab-content">
+            <div class="card">
+                <h2>💡 Dashboard Lights Reference</h2>
+                <p style="color: #e0e0e0;">Quick reference guide for dashboard warning lights.</p>
+                
+                <div class="results-grid">
+                    <div class="result-card">
+                        <h3>Check Engine</h3>
+                        <div class="severity severity-warning">Warning</div>
+                        <p class="location">Could indicate minor or serious issues. Get code scanned.</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Oil Pressure</h3>
+                        <div class="severity severity-critical">Critical</div>
+                        <p class="location">Stop driving immediately. Check oil level.</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Coolant Temperature</h3>
+                        <div class="severity severity-critical">Critical</div>
+                        <p class="location">Engine overheating. Pull over safely.</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Battery</h3>
+                        <div class="severity severity-warning">Warning</div>
+                        <p class="location">Charging system issue. Could be alternator or battery.</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>ABS Light</h3>
+                        <div class="severity severity-info">Info</div>
+                        <p class="location">Anti-lock brakes disabled. Standard brakes work.</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Airbag</h3>
+                        <div class="severity severity-warning">Warning</div>
+                        <p class="location">Airbag system fault. Get inspected soon.</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Tire Pressure (TPMS)</h3>
+                        <div class="severity severity-info">Info</div>
+                        <p class="location">One or more tires low. Check pressure.</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Brake</h3>
+                        <div class="severity severity-critical">Critical</div>
+                        <p class="location">Parking brake on or brake fluid low. Check immediately.</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Transmission</h3>
+                        <div class="severity severity-warning">Warning</div>
+                        <p class="location">Transmission issue. Pull over safely.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- About Tab -->
+        <div id="about" class="tab-content">
+            <div class="card">
+                <h2>ℹ️ About Bears Part Scout</h2>
+                <div class="about-section">
+                    <p>Welcome to <strong style="color: #fff;">Bears Part Scout</strong> — your automated scout for finding undervalued rare auto parts across Craigslist, Facebook Marketplace, eBay, and local junkyards.</p>
+                    
+                    <h3>How It Works</h3>
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <strong>🔍 Automated Searching</strong>
+                            <p>Our system continuously scans multiple platforms so you don't have to.</p>
+                        </div>
+                        <div class="feature-item">
+                            <strong>💰 Price Alerts</strong>
+                            <p>Get instant notifications when parts matching your criteria are listed.</p>
+                        </div>
+                        <div class="feature-item">
+                            <strong>🔄 Cross Reference</strong>
+                            <p>Find parts that fit your vehicle with our interchange database.</p>
+                        </div>
+                        <div class="feature-item">
+                            <strong>📊 Real-Time Data</strong>
+                            <p>Search results updated every 6 hours from all major platforms.</p>
+                        </div>
+                    </div>
+                    
+                    <h3>Coming Soon</h3>
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <strong>📱 Mobile App</strong>
+                            <p>iOS and Android apps for instant push notifications.</p>
+                        </div>
+                        <div class="feature-item">
+                            <strong>💳 Subscription Plans</strong>
+                            <p>Free tier + Premium plans with instant alerts.</p>
+                        </div>
+                    </div>
+                    
+                    <h3>Contact</h3>
+                    <p>Questions? Email us at: <strong style="color: #e63946;">support@bearspartscout.com</strong></p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2026 Bears Part Scout. All rights reserved.</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Cached search results (updated by GitHub Actions)
+        let cachedResults = null;
+
+        async function loadCachedResults() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/Bare8926/Bears-Part-Scout/main/search_results.json');
+                cachedResults = await response.json();
+            } catch(e) {
+                console.log('No cached results yet');
+            }
+        }
+
+        // Load on page load
+        window.addEventListener('DOMContentLoaded', loadCachedResults); // Vehicle data for dropdowns
+        const vehicleData = {
+            years: Array.from({length: 35}, (_, i) => 2026 - i),
+            makes: [
+                {name: "Acura", models: ["ILX", "MDX", "RDX", "RLX", "TLX", "TSX"]},
+                {name: "Audi", models: ["A3", "A4", "A5", "A6", "Q5", "Q7"]},
+                {name: "BMW", models: ["3 Series", "5 Series", "X3", "X5"]},
+                {name: "Buick", models: ["Enclave", "Encore", "Envision", "LaCrosse"]},
+                {name: "Cadillac", models: ["ATS", "CTS", "Escalade", "SRX"]},
+                {name: "Chevrolet", models: ["Camaro", "Cruze", "Equinox", "Malibu", "Silverado", "Tahoe", "Traverse"]},
+                {name: "Chrysler", models: ["300", "Pacifica", "Town & Country"]},
+                {name: "Dodge", models: ["Challenger", "Charger", "Durango", "Journey"]},
+                {name: "Ford", models: ["Edge", "Escape", "Explorer", "F-150", "Focus", "Fusion", "Mustang"]},
+                {name: "GMC", models: ["Acadia", "Sierra", "Terrain", "Yukon"]},
+                {name: "Honda", models: ["Accord", "Civic", "CR-V", "Fit", "HR-V", "Pilot"]},
+                {name: "Hyundai", models: ["Elantra", "Genesis", "Santa Fe", "Sonata", "Tucson"]},
+                {name: "Infiniti", models: ["Q50", "Q60", "Q70", "QX50", "QX60", "QX80"]},
+                {name: "Jeep", models: ["Cherokee", "Compass", "Grand Cherokee", "Renegade", "Wrangler"]},
+                {name: "Kia", models: ["Forte", "Optima", "Sedona", "Sorento", "Soul", "Sportage"]},
+                {name: "Lexus", models: ["CT", "ES", "GS", "IS", "LS", "NX", "RX"]},
+                {name: "Lincoln", models: ["Continental", "MKC", "MKS", "MKT", "MKX", "MKZ", "Navigator"]},
+                {name: "Mazda", models: ["CX-5", "CX-9", "Mazda3", "Mazda6", "MX-5"]},
+                {name: "Mercedes-Benz", models: ["C-Class", "E-Class", "GLC", "GLE", "S-Class"]},
+                {name: "Nissan", models: ["Altima", "Frontier", "Maxima", "Murano", "Pathfinder", "Rogue", "Sentra", "Titan"]},
+                {name: "Subaru", models: ["Ascent", "Crosstrek", "Forester", "Impreza", "Legacy", "Outback", "WRX"]},
+                {name: "Tesla", models: ["Model 3", "Model S", "Model X", "Model Y"]},
+                {name: "Toyota", models: ["4Runner", "Avalon", "Camry", "Corolla", "Highlander", "Prius", "RAV4", "Sienna", "Tacoma", "Tundra"]},
+                {name: "Volkswagen", models: ["Atlas", "Golf", "Jetta", "Passat", "Tiguan"]},
+                {name: "Volvo", models: ["S60", "S90", "V60", "XC60", "XC90"]}
+            ],
+            trims: ["LE", "SE", "Sport", "Limited", "Touring", "Premium", "Base", "EX", "LX", "GT"]};
+        
+        // Initialize dropdowns
+        function initDropdowns() {
+            const yearSelects = ['searchYear', 'vehicleYear', 'crossYear', 'reqYear'];
+            yearSelects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    select.innerHTML = '<option value="">Select Year</option>' + 
+                        vehicleData.years.map(y => `<option value="${y}">${y}</option>`).join('');
+                }
+            });
+            
+            const makeSelects = ['searchMake', 'vehicleMake', 'crossMake', 'reqMake'];
+            makeSelects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    select.innerHTML = '<option value="">Select Make</option>' + 
+                        vehicleData.makes.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+                }
+            });
+            
+            const trimSelects = ['searchTrim', 'vehicleTrim'];
+            trimSelects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    select.innerHTML = '<option value="">Any Trim</option>' + 
+                        vehicleData.trims.map(t => `<option value="${t}">${t}</option>`).join('');
+                }
+            });
+        }
+        
+        // Update model dropdown when make is selected
+        function updateModels(makeSelectId, modelSelectId) {
+            const makeSelect = document.getElementById(makeSelectId);
+            const modelSelect = document.getElementById(modelSelectId);
+            
+            if (makeSelect && modelSelect) {
+                makeSelect.addEventListener('change', function() {
+                    const selectedMake = this.value;
+                    const makeData = vehicleData.makes.find(m => m.name === selectedMake);
+                    
+                    if (makeData) {
+                        modelSelect.innerHTML = '<option value="">Select Model</option>' + 
+                            makeData.models.map(m => `<option value="${m}">${m}</option>`).join('');
+                    } else {
+                        modelSelect.innerHTML = '<option value="">Select Model</option>';
+                    }
+                });
+            }
+        }
+        
+        // Tab navigation
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Format price
+        function formatPrice(price) {
+            return typeof price === 'number' ? '$' + price.toLocaleString() : price;
+        }
+        
+        // Get platform class
+        function getPlatformClass(platform) {
+            return 'platform-' + platform.toLowerCase().replace(' ', '');
+        }
+        
+        // Search Parts
+        function searchParts() {
+            const year = document.getElementById('searchYear').value;
+            const make = document.getElementById('searchMake').value;
+            const model = document.getElementById('searchModel').value;
+            const trim = document.getElementById('searchTrim').value;
+            const maxPrice = document.getElementById('searchPrice').value;
+            const part = document.getElementById('searchPart').value || "part";
+            const resultsDiv = document.getElementById('partsResults');
+            
+            if (!year || !make || !model) {
+                resultsDiv.innerHTML = '<p style="color: #e63946;">Please fill in Year, Make, and Model.</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p style="color: #666;">🔎 Searching platforms...</p>';
+            
+            // Build search query
+            const query = `${year} ${make} ${model} ${trim} ${part}`.trim();
+            const vehicleDesc = `${year} ${make} ${model}`;
+            
+            // Simulate search delay
+            setTimeout(() => {
+                let results = [];
+                
+                // Use cached results if available, otherwise use sample data
+                if (cachedResults && cachedResults.length > 0) {
+                    results = cachedResults.filter(item => {
+                        const matchesQuery = item.title.toLowerCase().includes(part.toLowerCase()) ||
+                                           item.title.toLowerCase().includes(model.toLowerCase());
+                        const matchesPrice = !maxPrice || (item.price && item.price <= parseInt(maxPrice));
+                        return matchesQuery && matchesPrice;
+                    });
+                } else {
+                    // Sample data for demo
+                    results = [
+                        {title: `OEM ${part} for ${vehicleDesc} - Great Condition`, price: 150, location: "Los Angeles, CA", platform: "Craigslist", url: "#"},
+                        {title: `Aftermarket ${part} for ${vehicleDesc} - New in Box`, price: 89, location: "Phoenix, AZ", platform: "eBay", url: "#"},
+                        {title: `Used ${part} for ${vehicleDesc} - Low Miles`, price: 75, location: "Houston, TX", platform: "Facebook", url: "#"},
+                        {title: `New ${part} for ${vehicleDesc} - Free Shipping`, price: 195, location: "Chicago, IL", platform: "eBay", url: "#"},
+                        {title: `Salvage ${part} from ${year} ${make} ${model}`, price: 45, location: "Denver, CO", platform: "Craigslist", url: "#"}
+                    ];
+                    
+                    // Filter by max price
+                    if (maxPrice) {
+                        results = results.filter(r => r.price <= parseInt(maxPrice));
+                    }
+                }
+                
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #888;">No results found. Try adjusting your search criteria.</p>';
+                    return;
+                }
+                
+                // Display results
+                resultsDiv.innerHTML = results.map(item => `
+                    <div class="result-card">
+                        <h3>${item.title}</h3>
+                        <div class="price">${formatPrice(item.price)}</div>
+                        <div class="location">📍 ${item.location}</div>
+                        <span class="platform ${getPlatformClass(item.platform)}">${item.platform}</span>
+                        <a href="${item.url}" target="_blank">View Listing →</a>
+                    </div>
+                `).join('');
+            }, 1000);
+        }// Search Vehicles
+        function searchVehicles() {
+            const year = document.getElementById('vehicleYear').value;
+            const make = document.getElementById('vehicleMake').value;
+            const model = document.getElementById('vehicleModel').value;
+            const trim = document.getElementById('vehicleTrim').value;
+            const maxPrice = document.getElementById('vehiclePrice').value;
+            const resultsDiv = document.getElementById('vehicleResults');
+            
+            if (!year || !make || !model) {
+                resultsDiv.innerHTML = '<p style="color: #e63946;">Please fill in Year, Make, and Model.</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p style="color: #666;">🔎 Searching platforms...</p>';
+            
+            const vehicleDesc = `${year} ${make} ${model}`;
+            
+            setTimeout(() => {
+                // Sample vehicle data
+                let results = [
+                    {title: `${year} ${make} ${model} ${trim} - Low Miles`, price: 18500, location: "Los Angeles, CA", platform: "Facebook", url: "#"},
+                    {title: `${year} ${make} ${model} - Clean Title`, price: 15200, location: "Phoenix, AZ", platform: "Craigslist", url: "#"},
+                    {title: `${year} ${make} ${model} Sport - Great Condition`, price: 22000, location: "Houston, TX", platform: "Facebook", url: "#"},
+                    {title: `Salvage ${make} ${model} - Good for Parts`, price: 3500, location: "Denver, CO", platform: "Craigslist", url: "#"},
+                    {title: `${year} ${make} ${model} Limited - Loaded`, price: 28000, location: "Chicago, IL", platform: "eBay", url: "#"}
+                ];
+                
+                if (maxPrice) {
+                    results = results.filter(r => r.price <= parseInt(maxPrice));
+                }
+                
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #888;">No vehicles found. Try adjusting your search criteria.</p>';
+                    return;
+                }
+                
+                resultsDiv.innerHTML = results.map(item => `
+                    <div class="result-card">
+                        <h3>${item.title}</h3>
+                        <div class="price">${formatPrice(item.price)}</div>
+                        <div class="location">📍 ${item.location}</div>
+                        <span class="platform ${getPlatformClass(item.platform)}">${item.platform}</span>
+                        <a href="${item.url}" target="_blank">View Listing →</a>
+                    </div>
+                `).join('');
+            }, 1000);
+        }
+        
+        // Cross Reference
+        function crossReference() {
+            const part = document.getElementById('crossPart').value;
+            const make = document.getElementById('crossMake').value;
+            const model = document.getElementById('crossModel').value;
+            const year = document.getElementById('crossYear').value;
+            const resultsDiv = document.getElementById('crossResults');
+            
+            if (!part || !make || !model) {
+                resultsDiv.innerHTML = '<p style="color: #e63946;">Please fill in Part Name, Make, and Model.</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p style="color: #666;">🔎 Finding interchanges...</p>';
+            
+            // Sample interchange data
+            const interchanges = [
+                {year: year, make: make, model: model, part: part, oem: true, price: 180},
+                {year: parseInt(year)+1, make: make, model: model, part: part, oem: true, price: 175},
+                {year: parseInt(year)-1, make: make, model: model, part: part, oem: true, price: 165},
+                {year: year, make: "Aftermarket", model: model, part: part, oem: false, price: 95},
+                {year: parseInt(year)+2, make: make, model: model, part: part, oem: false, price: 120}
+            ];
+            
+            setTimeout(() => {
+                resultsDiv.innerHTML = `
+                    <div class="result-card" style="grid-column: 1 / -1;">
+                        <h3>📋 Parts that fit: ${year} ${make} ${model} ${part}</h3>
+                        <p style="color: #888; margin-top: 10px;">Showing compatible parts and alternatives:</p>
+                    </div>
+                ` + interchanges.map(item => `
+                    <div class="result-card">
+                        <h3>${item.year} ${item.make} ${item.model} ${item.part}</h3>
+                        <div class="price">${formatPrice(item.price)}</div>
+                        <div class="location">${item.oem ? '🔵 OEM' : '🟢 Aftermarket'}</div>
+                        <span class="platform ${getPlatformClass(item.year + ' ' + item.make)}">Fits: ${item.year} ${item.make} ${item.model}</span>
+                        <a href="#">View Details →</a>
+                    </div>
+                `).join('');
+            }, 800);
+        }
+        
+        // Submit Request
+        async function submitRequest() {
+            const name = document.getElementById('reqName').value;
+            const email = document.getElementById('reqEmail').value;
+            const year = document.getElementById('reqYear').value;
+            const make = document.getElementById('reqMake').value;
+            const model = document.getElementById('reqModel').value;
+            const details = document.getElementById('reqDetails').value;
+            
+            if (!name || !email || !year || !make || !model) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            // Save locally
+            const requests = JSON.parse(localStorage.getItem('vehicleRequests') || '[]');
+            requests.push({name, email, year, make, model, details, date: new Date().toISOString()});
+            localStorage.setItem('vehicleRequests', JSON.stringify(requests));
+            
+            // Try to submit to Formspree (optional)
+            try {
+                await fetch('https://formspree.io/f/YOUR_FORM_ID', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, email, year, make, model, details})
+                });
+            } catch(e) {
+                console.log('Formspree not configured, saved locally only');
+            }
+            
+            alert('✅ Request submitted! We\'ll notify you when we find a match.');
+            
+            // Clear form
+            document.getElementById('reqName').value = '';
+            document.getElementById('reqEmail').value = '';
+            document.getElementById('reqDetails').value = '';
+        } // OBD-II Diagnostic Codes Database
+        const obdCodes = {
+            "P0100": {desc: "Mass Air Flow Circuit Malfunction", severity: "warning"},
+            "P0101": {desc: "Mass Air Flow Circuit Range/Performance", severity: "warning"},
+            "P0102": {desc: "Mass Air Flow Circuit Low Input", severity: "warning"},
+            "P0103": {desc: "Mass Air Flow Circuit High Input", severity: "warning"},
+            "P0110": {desc: "Intake Air Temperature Circuit Malfunction", severity: "warning"},
+            "P0120": {desc: "Throttle Position Sensor Circuit Malfunction", severity: "warning"},
+            "P0130": {desc: "O2 Sensor Circuit Malfunction (Bank 1, Sensor 1)", severity: "warning"},
+            "P0131": {desc: "O2 Sensor Circuit Low Voltage (Bank 1, Sensor 1)", severity: "warning"},
+            "P0171": {desc: "System Too Lean (Bank 1)", severity: "warning"},
+            "P0172": {desc: "System Too Rich (Bank 1)", severity: "warning"},
+            "P0300": {desc: "Random/Multiple Cylinder Misfire Detected", severity: "warning"},
+            "P0301": {desc: "Cylinder 1 Misfire Detected", severity: "warning"},
+            "P0302": {desc: "Cylinder 2 Misfire Detected", severity: "warning"},
+            "P0303": {desc: "Cylinder 3 Misfire Detected", severity: "warning"},
+            "P0304": {desc: "Cylinder 4 Misfire Detected", severity: "warning"},
+            "P0325": {desc: "Knock Sensor 1 Circuit Malfunction", severity: "warning"},
+            "P0335": {desc: "Crankshaft Position Sensor Circuit Malfunction", severity: "critical"},
+            "P0340": {desc: "Camshaft Position Sensor Circuit Malfunction", severity: "critical"},
+            "P0400": {desc: "Exhaust Gas Recirculation Flow Malfunction", severity: "warning"},
+            "P0420": {desc: "Catalyst System Efficiency Below Threshold (Bank 1)", severity: "warning"},
+            "P0430": {desc: "Catalyst System Efficiency Below Threshold (Bank 2)", severity: "warning"},
+            "P0440": {desc: "Evaporative Emission Control System Malfunction", severity: "warning"},
+            "P0442": {desc: "Evaporative Emission Control System Leak Detected (small leak)", severity: "warning"},
+            "P0455": {desc: "Evaporative Emission Control System Leak Detected (large leak)", severity: "warning"},
+            "P0500": {desc: "Vehicle Speed Sensor Malfunction", severity: "warning"},
+            "P0505": {desc: "Idle Control System Malfunction", severity: "warning"},
+            "P0600": {desc: "Serial Communication Link Malfunction", severity: "critical"},
+            "P0700": {desc: "Transmission Control System Malfunction", severity: "critical"},
+            "P0715": {desc: "Input/Turbine Speed Sensor Circuit Malfunction", severity: "critical"},
+            "P0720": {desc: "Output Speed Sensor Circuit Malfunction", severity: "critical"}
+        };
+        
+        function lookupCode() {
+            const code = document.getElementById('diagnosticCode').value.toUpperCase().trim();
+            const resultDiv = document.getElementById('diagnosticResult');
+            
+            if (!code) {
+                resultDiv.style.display = 'none';
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            
+            if (obdCodes[code]) {
+                const codeInfo = obdCodes[code];
+                const severityClass = 'severity-' + codeInfo.severity;
+                const severityLabel = codeInfo.severity.charAt(0).toUpperCase() + codeInfo.severity.slice(1);
+                
+                resultDiv.innerHTML = `
+                    <h4>Code: ${code}</h4>
+                    <span class="severity ${severityClass}">${severityLabel}</span>
+                    <p style="color: #ccc; margin-top: 10px;">${codeInfo.desc}</p>
+                    <p style="color: #888; margin-top: 15px; font-size: 0.9rem;">
+                        ${codeInfo.severity === 'critical' ? '⚠️ Stop driving. Have vehicle towed to a mechanic.' : 
+                          codeInfo.severity === 'warning' ? '⚡ Have checked soon, but not an emergency.' : 
+                          'ℹ️ Informational - monitor for changes.'}
+                    </p>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <h4>Code: ${code}</h4>
+                    <p style="color: #888;">Unknown code. Check with a mechanic or diagnostic tool.</p>
+                `;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            initDropdowns();
+            updateModels('searchMake', 'searchModel');
+            updateModels('vehicleMake', 'vehicleModel');
+            updateModels('crossMake', 'crossModel');
+            updateModels('reqMake', 'reqModel');
+        });
+    </script>
+</body>
+</html>
