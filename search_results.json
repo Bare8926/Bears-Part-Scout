@@ -1,0 +1,23 @@
+[
+  {
+    "title": "Honda Civic Brake Calipers - Front",
+    "price": 120,
+    "location": "Phoenix, AZ",
+    "platform": "Craigslist",
+    "url": "https://phoenix.craigslist.org/pts/d/phoenix-honda-civic-brake-calipers/1234567890.html"
+  },
+  {
+    "title": "2019 Honda Civic EX - Great Condition",
+    "price": 18500,
+    "location": "Los Angeles, CA",
+    "platform": "Facebook",
+    "url": "https://facebook.com/marketplace/item/123456789"
+  },
+  {
+    "title": "OEM Honda Civic Brake Calipers Set",
+    "price": 89,
+    "location": "Houston, TX",
+    "platform": "eBay",
+    "url": "https://ebay.com/itm/123456789"
+  }
+]
