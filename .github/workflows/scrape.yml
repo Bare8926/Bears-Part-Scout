@@ -1,0 +1,40 @@
+name: Run Bears Part Scout Scraper
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Apify SDK
+        run: npm install apify-sdk
+
+      - name: Run Apify Integration
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: |
+          node apify_integration.js "honda civic parts" > scraper.log 2>&1
+          cat scraper.log
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-results
+          path: search_results.json
+
+      - name: Commit results to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update search results"
+          file_pattern: search_results.json
