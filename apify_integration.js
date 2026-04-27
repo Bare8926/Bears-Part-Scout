@@ -1,35 +1,13 @@
 #!/usr/bin/env node
 /**
  * Bears Part Scout - Apify Integration
- * Uses free RSS feeds where possible, Apify for others
+ * Simplified version - skips Craigslist (blocking) for now
  */
 
 const https = require('https');
 const fs = require('fs');
 
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
-
-// Helper function to make HTTP requests
-function httpRequest(url) {
-    return new Promise((resolve, reject) => {
-        const urlObj = new URL(url);
-        
-        const options = {
-            hostname: urlObj.hostname,
-            path: urlObj.pathname + urlObj.search,
-            method: 'GET'
-        };
-        
-        const req = https.request(options, (res) => {
-            let body = '';
-            res.on('data', chunk => body += chunk);
-            res.on('end', () => resolve(body));
-        });
-        
-        req.on('error', reject);
-        req.end();
-    });
-}
 
 // Helper function to make API requests
 function apifyRequest(url, data) {
@@ -69,50 +47,13 @@ function apifyRequest(url, data) {
     });
 }
 
-// FREE: Craigslist RSS feed
+// Placeholder for Craigslist - skipped due to blocking
 async function searchCraigslist(query, location = "losangeles") {
-    const rssUrl = `https://${location}.craigslist.org/search/sss?query=${encodeURIComponent(query)}&format=rss`;
-    
-    try {
-        console.log("  Fetching Craigslist RSS:", rssUrl);
-        const xml = await httpRequest(rssUrl);
-        
-        // Simple XML parsing
-        const items = [];
-        const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-        let match;
-        
-        while ((match = itemRegex.exec(xml)) !== null) {
-            const itemXml = match[1];
-            const title = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || 
-                        itemXml.match(/<title>(.*?)<\/title>/)?.[1] || "N/A";
-            const link = itemXml.match(/<link>(.*?)<\/link>/)?.[1] || "";
-            const price = itemXml.match(/<price>(.*?)<\/price>/)?.[1] || "N/A";
-            const date = itemXml.match(/<dc:date>(.*?)<\/dc:date>/)?.[1] || "";
-            const locationMatch = itemXml.match(/<location>(.*?)<\/location>/);
-            const location = locationMatch ? locationMatch[1] : "N/A";
-            
-            if (title && title !== "N/A") {
-                items.push({
-                    title: title.trim(),
-                    price: price,
-                    location: location,
-                    url: link,
-                    date: date,
-                    platform: "Craigslist"
-                });
-            }
-        }
-        
-        console.log(`  Found ${items.length} Craigslist results`);
-        return items.slice(0, 20);
-    } catch (e) {
-        console.error("Craigslist error:", e.message);
-    }
+    console.log("  Craigslist: SKIPPED (blocked by Craigslist)");
     return [];
 }
 
-// eBay - try using Apify
+// eBay 
 async function searchEbay(query) {
     const searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`;
     const url = "https://api.apify.com/v2/acts/memo23~apify-ebay-search-cheerio/run-sync";
@@ -144,7 +85,7 @@ async function searchEbay(query) {
     return [];
 }
 
-// Facebook - try Apify
+// Facebook
 async function searchFacebook(query, location = "losangeles") {
     const searchUrl = `https://www.facebook.com/marketplace/${location}/search/?query=${encodeURIComponent(query)}`;
     const url = "https://api.apify.com/v2/acts/apify~facebook-marketplace-scraper/run-sync";
@@ -175,7 +116,7 @@ async function searchFacebook(query, location = "losangeles") {
     return [];
 }
 
-// Google - try Apify
+// Google
 async function searchGoogle(query) {
     const url = "https://api.apify.com/v2/acts/apidojo~google-search-scraper/run-sync";
     
@@ -206,7 +147,7 @@ async function searchGoogle(query) {
 async function searchAll(query) {
     console.log(`Searching for: ${query}`);
     
-    console.log("Searching Craigslist (free RSS)...");
+    console.log("Checking Craigslist...");
     const craigslistResults = await searchCraigslist(query);
     
     console.log("Searching eBay...");
