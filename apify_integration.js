@@ -48,13 +48,12 @@ function apifyRequest(url, data) {
 }
 
 async function searchCraigslist(query, location = "losangeles") {
-    const searchUrl = `https://${location}.craigslist.org/search/sss?query=${encodeURIComponent(query)}`;
     const url = "https://api.apify.com/v2/acts/ivanvs~craigslist-scraper/run-sync";
     
     try {
-        console.log("  Calling Craigslist API with:", JSON.stringify({ urls: [searchUrl] }));
+        console.log("  Calling Craigslist API with:", JSON.stringify({ searchTerms: [query] }));
         const data = await apifyRequest(url, {
-            urls: [searchUrl]
+            searchTerms: [query]
         });
         console.log("  Craigslist API response:", JSON.stringify(data).substring(0, 500));
         
@@ -83,9 +82,9 @@ async function searchFacebook(query, location = "losangeles") {
     const url = "https://api.apify.com/v2/acts/apify~facebook-marketplace-scraper/run-sync";
     
     try {
-        console.log("  Calling Facebook API with:", JSON.stringify({ urls: [searchUrl] }));
+        console.log("  Calling Facebook API with:", JSON.stringify({ startUrls: [searchUrl] }));
         const data = await apifyRequest(url, {
-            urls: [searchUrl]
+            startUrls: [searchUrl]
         });
         console.log("  Facebook API response:", JSON.stringify(data).substring(0, 500));
         
@@ -114,13 +113,12 @@ async function searchFacebook(query, location = "losangeles") {
 }
 
 async function searchEbay(query) {
-    const searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`;
     const url = "https://api.apify.com/v2/acts/dtrungtin~ebay-items-scraper/run-sync";
     
     try {
-        console.log("  Calling eBay API with:", JSON.stringify({ urls: [searchUrl] }));
+        console.log("  Calling eBay API with:", JSON.stringify({ searchTerms: [query] }));
         const data = await apifyRequest(url, {
-            urls: [searchUrl]
+            searchTerms: [query]
         });
         console.log("  eBay API response:", JSON.stringify(data).substring(0, 500));
         
@@ -215,4 +213,3 @@ searchAll(query).then(results => {
         console.log(`  - ${r.title} (${r.platform})`);
     });
 }).catch(console.error);
-
