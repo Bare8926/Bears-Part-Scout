@@ -2,6 +2,7 @@
 /**
  * Bears Part Scout - Apify Integration
  * Searches Craigslist, Facebook Marketplace, eBay, and Google
+ * Uses search-focused actors that accept search URLs
  */
 
 const https = require('https');
@@ -48,12 +49,14 @@ function apifyRequest(url, data) {
 }
 
 async function searchCraigslist(query, location = "losangeles") {
-    const url = "https://api.apify.com/v2/acts/ivanvs~craigslist-scraper/run-sync";
+    const searchUrl = `https://${location}.craigslist.org/search/sss?query=${encodeURIComponent(query)}`;
+    const url = "https://api.apify.com/v2/acts/easyapi~craigslist-search-results-scraper/run-sync";
     
     try {
-        console.log("  Calling Craigslist API with:", JSON.stringify({ searchTerms: [query] }));
+        console.log("  Calling Craigslist API with:", JSON.stringify({ searchUrls: [searchUrl], maxItems: 20 }));
         const data = await apifyRequest(url, {
-            searchTerms: [query]
+            searchUrls: [searchUrl],
+            maxItems: 20
         });
         console.log("  Craigslist API response:", JSON.stringify(data).substring(0, 500));
         
@@ -66,8 +69,8 @@ async function searchCraigslist(query, location = "losangeles") {
                 title: item.title || "N/A",
                 price: item.price || "N/A",
                 location: item.location || "N/A",
-                url: item.url || "",
-                date: item.datetime || "",
+                url: item.url || item.postUrl || "",
+                date: item.postedAt || item.datetime || "",
                 platform: "Craigslist"
             }));
         }
@@ -79,12 +82,13 @@ async function searchCraigslist(query, location = "losangeles") {
 
 async function searchFacebook(query, location = "losangeles") {
     const searchUrl = `https://www.facebook.com/marketplace/${location}/search/?query=${encodeURIComponent(query)}`;
-    const url = "https://api.apify.com/v2/acts/apify~facebook-marketplace-scraper/run-sync";
+    const url = "https://api.apify.com/v2/acts/happitap~facebook-marketplace-listings-scraper/run-sync";
     
     try {
-        console.log("  Calling Facebook API with:", JSON.stringify({ startUrls: [searchUrl] }));
+        console.log("  Calling Facebook API with:", JSON.stringify({ searchUrls: [searchUrl], maxItems: 20 }));
         const data = await apifyRequest(url, {
-            startUrls: [searchUrl]
+            searchUrls: [searchUrl],
+            maxItems: 20
         });
         console.log("  Facebook API response:", JSON.stringify(data).substring(0, 500));
         
@@ -93,18 +97,14 @@ async function searchFacebook(query, location = "losangeles") {
             const itemsUrl = `https://api.apify.com/v2/datasets/${datasetId}/items`;
             const items = await apifyRequest(itemsUrl);
             
-            return items.map(item => {
-                const price = item.listing_price || {};
-                const priceStr = (price.formatted_amount) ? price.formatted_amount : "N/A";
-                return {
-                    title: item.name || "N/A",
-                    price: priceStr,
-                    location: (item.location && item.location.city) ? item.location.city : "N/A",
-                    url: item.listingUrl || "",
-                    date: item.createdAt || "",
-                    platform: "Facebook"
-                };
-            });
+            return items.map(item => ({
+                title: item.title || item.name || "N/A",
+                price: item.priceFormatted || item.priceNumeric || "N/A",
+                location: item.location || "N/A",
+                url: item.url || "",
+                date: item.postedAt || "",
+                platform: "Facebook"
+            }));
         }
     } catch (e) {
         console.error("Facebook error:", e.message);
@@ -113,12 +113,13 @@ async function searchFacebook(query, location = "losangeles") {
 }
 
 async function searchEbay(query) {
-    const url = "https://api.apify.com/v2/acts/dtrungtin~ebay-items-scraper/run-sync";
+    const searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`;
+    const url = "https://api.apify.com/v2/acts/memo23~apify-ebay-search-cheerio/run-sync";
     
     try {
-        console.log("  Calling eBay API with:", JSON.stringify({ searchTerms: [query] }));
+        console.log("  Calling eBay API with:", JSON.stringify({ startUrls: [searchUrl] }));
         const data = await apifyRequest(url, {
-            searchTerms: [query]
+            startUrls: [searchUrl]
         });
         console.log("  eBay API response:", JSON.stringify(data).substring(0, 500));
         
