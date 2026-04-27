@@ -53,9 +53,7 @@ async function searchCraigslist(query, location = "losangeles") {
     
     try {
         const data = await apifyRequest(url, {
-            urls: [{ url: searchUrl }],
-            maxConcurrency: 1,
-            proxyConfiguration: { useApifyProxy: true }
+            urls: [searchUrl]
         });
         
         if (data.data && data.data.defaultDatasetId) {
@@ -84,8 +82,7 @@ async function searchFacebook(query, location = "losangeles") {
     
     try {
         const data = await apifyRequest(url, {
-            facebookUrls: [searchUrl],
-            maxItems: 20
+            urls: [searchUrl]
         });
         
         if (data.data && data.data.defaultDatasetId) {
@@ -118,8 +115,7 @@ async function searchEbay(query) {
     
     try {
         const data = await apifyRequest(url, {
-            searchUrl: searchUrl,
-            maxItems: 20
+            urls: [searchUrl]
         });
         
         if (data.data && data.data.defaultDatasetId) {
@@ -143,17 +139,26 @@ async function searchEbay(query) {
 }
 
 async function searchGoogle(query) {
-    const url = "https://api.apify.com/v2/acts/apidojo~google-search-scraper/run-sync-get-dataset-items";
+    const url = "https://api.apify.com/v2/acts/apidojo~google-search-scraper/run-sync";
     
     try {
-        const items = await apifyRequest(url + `?token=${APIFY_TOKEN}&query=${encodeURIComponent(query)}&num=10`);
+        const data = await apifyRequest(url, {
+            queries: [query],
+            numResults: 10
+        });
         
-        return items.map(item => ({
-            title: item.title || "N/A",
-            url: item.url || "",
-            snippet: item.snippet || "",
-            platform: "Google"
-        }));
+        if (data.data && data.data.defaultDatasetId) {
+            const datasetId = data.data.defaultDatasetId;
+            const itemsUrl = `https://api.apify.com/v2/datasets/${datasetId}/items`;
+            const items = await apifyRequest(itemsUrl);
+            
+            return items.map(item => ({
+                title: item.title || "N/A",
+                url: item.url || "",
+                snippet: item.snippet || "",
+                platform: "Google"
+            }));
+        }
     } catch (e) {
         console.error("Google error:", e.message);
     }
