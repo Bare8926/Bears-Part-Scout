@@ -1,14 +1,35 @@
 #!/usr/bin/env node
 /**
  * Bears Part Scout - Apify Integration
- * Searches Craigslist, Facebook Marketplace, eBay, and Google
- * Uses search-focused actors that accept search URLs
+ * Uses free RSS feeds where possible, Apify for others
  */
 
 const https = require('https');
 const fs = require('fs');
 
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
+
+// Helper function to make HTTP requests
+function httpRequest(url) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        
+        const options = {
+            hostname: urlObj.hostname,
+            path: urlObj.pathname + urlObj.search,
+            method: 'GET'
+        };
+        
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => resolve(body));
+        });
+        
+        req.on('error', reject);
+        req.end();
+    });
+}
 
 // Helper function to make API requests
 function apifyRequest(url, data) {
@@ -48,80 +69,60 @@ function apifyRequest(url, data) {
     });
 }
 
+// FREE: Craigslist RSS feed
 async function searchCraigslist(query, location = "losangeles") {
-    const searchUrl = `https://${location}.craigslist.org/search/sss?query=${encodeURIComponent(query)}`;
-    const url = "https://api.apify.com/v2/acts/easyapi~craigslist-search-results-scraper/run-sync";
+    const rssUrl = `https://${location}.craigslist.org/search/sss?query=${encodeURIComponent(query)}&format=rss`;
     
     try {
-        console.log("  Calling Craigslist API with:", JSON.stringify({ searchUrls: [searchUrl], maxItems: 20 }));
-        const data = await apifyRequest(url, {
-            searchUrls: [searchUrl],
-            maxItems: 20
-        });
-        console.log("  Craigslist API response:", JSON.stringify(data).substring(0, 500));
+        console.log("  Fetching Craigslist RSS:", rssUrl);
+        const xml = await httpRequest(rssUrl);
         
-        if (data.data && data.data.defaultDatasetId) {
-            const datasetId = data.data.defaultDatasetId;
-            const itemsUrl = `https://api.apify.com/v2/datasets/${datasetId}/items`;
-            const items = await apifyRequest(itemsUrl);
+        // Simple XML parsing
+        const items = [];
+        const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+        let match;
+        
+        while ((match = itemRegex.exec(xml)) !== null) {
+            const itemXml = match[1];
+            const title = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || 
+                        itemXml.match(/<title>(.*?)<\/title>/)?.[1] || "N/A";
+            const link = itemXml.match(/<link>(.*?)<\/link>/)?.[1] || "";
+            const price = itemXml.match(/<price>(.*?)<\/price>/)?.[1] || "N/A";
+            const date = itemXml.match(/<dc:date>(.*?)<\/dc:date>/)?.[1] || "";
+            const locationMatch = itemXml.match(/<location>(.*?)<\/location>/);
+            const location = locationMatch ? locationMatch[1] : "N/A";
             
-            return items.map(item => ({
-                title: item.title || "N/A",
-                price: item.price || "N/A",
-                location: item.location || "N/A",
-                url: item.url || item.postUrl || "",
-                date: item.postedAt || item.datetime || "",
-                platform: "Craigslist"
-            }));
+            if (title && title !== "N/A") {
+                items.push({
+                    title: title.trim(),
+                    price: price,
+                    location: location,
+                    url: link,
+                    date: date,
+                    platform: "Craigslist"
+                });
+            }
         }
+        
+        console.log(`  Found ${items.length} Craigslist results`);
+        return items.slice(0, 20);
     } catch (e) {
         console.error("Craigslist error:", e.message);
     }
     return [];
 }
 
-async function searchFacebook(query, location = "losangeles") {
-    const searchUrl = `https://www.facebook.com/marketplace/${location}/search/?query=${encodeURIComponent(query)}`;
-    const url = "https://api.apify.com/v2/acts/happitap~facebook-marketplace-listings-scraper/run-sync";
-    
-    try {
-        console.log("  Calling Facebook API with:", JSON.stringify({ searchUrls: [searchUrl], maxItems: 20 }));
-        const data = await apifyRequest(url, {
-            searchUrls: [searchUrl],
-            maxItems: 20
-        });
-        console.log("  Facebook API response:", JSON.stringify(data).substring(0, 500));
-        
-        if (data.data && data.data.defaultDatasetId) {
-            const datasetId = data.data.defaultDatasetId;
-            const itemsUrl = `https://api.apify.com/v2/datasets/${datasetId}/items`;
-            const items = await apifyRequest(itemsUrl);
-            
-            return items.map(item => ({
-                title: item.title || item.name || "N/A",
-                price: item.priceFormatted || item.priceNumeric || "N/A",
-                location: item.location || "N/A",
-                url: item.url || "",
-                date: item.postedAt || "",
-                platform: "Facebook"
-            }));
-        }
-    } catch (e) {
-        console.error("Facebook error:", e.message);
-    }
-    return [];
-}
-
+// eBay - try using Apify
 async function searchEbay(query) {
     const searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`;
     const url = "https://api.apify.com/v2/acts/memo23~apify-ebay-search-cheerio/run-sync";
     
     try {
-        console.log("  Calling eBay API with:", JSON.stringify({ startUrls: [searchUrl] }));
+        console.log("  Calling eBay API...");
         const data = await apifyRequest(url, {
-            startUrls: [searchUrl]
+            startUrls: [{ url: searchUrl }]
         });
-        console.log("  eBay API response:", JSON.stringify(data).substring(0, 500));
+        console.log("  eBay response:", JSON.stringify(data).substring(0, 300));
         
         if (data.data && data.data.defaultDatasetId) {
             const datasetId = data.data.defaultDatasetId;
@@ -143,16 +144,46 @@ async function searchEbay(query) {
     return [];
 }
 
+// Facebook - try Apify
+async function searchFacebook(query, location = "losangeles") {
+    const searchUrl = `https://www.facebook.com/marketplace/${location}/search/?query=${encodeURIComponent(query)}`;
+    const url = "https://api.apify.com/v2/acts/apify~facebook-marketplace-scraper/run-sync";
+    
+    try {
+        console.log("  Calling Facebook API...");
+        const data = await apifyRequest(url, {
+            startUrls: [{ url: searchUrl }]
+        });
+        
+        if (data.data && data.data.defaultDatasetId) {
+            const datasetId = data.data.defaultDatasetId;
+            const itemsUrl = `https://api.apify.com/v2/datasets/${datasetId}/items`;
+            const items = await apifyRequest(itemsUrl);
+            
+            return items.map(item => ({
+                title: item.name || item.title || "N/A",
+                price: item.priceFormatted || item.listing_price?.formatted_amount || "N/A",
+                location: item.location?.city || "N/A",
+                url: item.listingUrl || "",
+                date: item.createdAt || "",
+                platform: "Facebook"
+            }));
+        }
+    } catch (e) {
+        console.error("Facebook error:", e.message);
+    }
+    return [];
+}
+
+// Google - try Apify
 async function searchGoogle(query) {
     const url = "https://api.apify.com/v2/acts/apidojo~google-search-scraper/run-sync";
     
     try {
-        console.log("  Calling Google API with:", JSON.stringify({ queries: [query], numResults: 10 }));
+        console.log("  Calling Google API...");
         const data = await apifyRequest(url, {
-            queries: [query],
-            numResults: 10
+            queries: [{ query: query, numResults: 10 }]
         });
-        console.log("  Google API response:", JSON.stringify(data).substring(0, 500));
         
         if (data.data && data.data.defaultDatasetId) {
             const datasetId = data.data.defaultDatasetId;
@@ -175,23 +206,19 @@ async function searchGoogle(query) {
 async function searchAll(query) {
     console.log(`Searching for: ${query}`);
     
-    console.log("Searching Craigslist...");
+    console.log("Searching Craigslist (free RSS)...");
     const craigslistResults = await searchCraigslist(query);
-    console.log(`  Found ${craigslistResults.length} results`);
-    
-    console.log("Searching Facebook Marketplace...");
-    const fbResults = await searchFacebook(query);
-    console.log(`  Found ${fbResults.length} results`);
     
     console.log("Searching eBay...");
     const ebayResults = await searchEbay(query);
-    console.log(`  Found ${ebayResults.length} results`);
+    
+    console.log("Searching Facebook Marketplace...");
+    const fbResults = await searchFacebook(query);
     
     console.log("Searching Google...");
     const googleResults = await searchGoogle(query);
-    console.log(`  Found ${googleResults.length} results`);
     
-    const allResults = [...craigslistResults, ...fbResults, ...ebayResults, ...googleResults];
+    const allResults = [...craigslistResults, ...ebayResults, ...fbResults, ...googleResults];
     
     const results = {
         timestamp: new Date().toISOString(),
@@ -207,7 +234,7 @@ async function searchAll(query) {
 }
 
 // Run from command line
-const query = process.argv.slice(2).join(" ") || "honda civic brake calipers";
+const query = process.argv.slice(2).join(" ") || "honda civic parts";
 searchAll(query).then(results => {
     console.log("\nFirst 3 results:");
     results.results.slice(0, 3).forEach(r => {
