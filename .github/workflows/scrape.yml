@@ -17,8 +17,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Apify SDK
-        run: npm install apify-sdk
+    
 
       - name: Run Apify Integration
         env:
