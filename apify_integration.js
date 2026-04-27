@@ -52,9 +52,11 @@ async function searchCraigslist(query, location = "losangeles") {
     const url = "https://api.apify.com/v2/acts/ivanvs~craigslist-scraper/run-sync";
     
     try {
+        console.log("  Calling Craigslist API with:", JSON.stringify({ urls: [searchUrl] }));
         const data = await apifyRequest(url, {
             urls: [searchUrl]
         });
+        console.log("  Craigslist API response:", JSON.stringify(data).substring(0, 500));
         
         if (data.data && data.data.defaultDatasetId) {
             const datasetId = data.data.defaultDatasetId;
@@ -81,9 +83,11 @@ async function searchFacebook(query, location = "losangeles") {
     const url = "https://api.apify.com/v2/acts/apify~facebook-marketplace-scraper/run-sync";
     
     try {
+        console.log("  Calling Facebook API with:", JSON.stringify({ urls: [searchUrl] }));
         const data = await apifyRequest(url, {
             urls: [searchUrl]
         });
+        console.log("  Facebook API response:", JSON.stringify(data).substring(0, 500));
         
         if (data.data && data.data.defaultDatasetId) {
             const datasetId = data.data.defaultDatasetId;
@@ -114,9 +118,11 @@ async function searchEbay(query) {
     const url = "https://api.apify.com/v2/acts/dtrungtin~ebay-items-scraper/run-sync";
     
     try {
+        console.log("  Calling eBay API with:", JSON.stringify({ urls: [searchUrl] }));
         const data = await apifyRequest(url, {
             urls: [searchUrl]
         });
+        console.log("  eBay API response:", JSON.stringify(data).substring(0, 500));
         
         if (data.data && data.data.defaultDatasetId) {
             const datasetId = data.data.defaultDatasetId;
@@ -142,10 +148,12 @@ async function searchGoogle(query) {
     const url = "https://api.apify.com/v2/acts/apidojo~google-search-scraper/run-sync";
     
     try {
+        console.log("  Calling Google API with:", JSON.stringify({ queries: [query], numResults: 10 }));
         const data = await apifyRequest(url, {
             queries: [query],
             numResults: 10
         });
+        console.log("  Google API response:", JSON.stringify(data).substring(0, 500));
         
         if (data.data && data.data.defaultDatasetId) {
             const datasetId = data.data.defaultDatasetId;
