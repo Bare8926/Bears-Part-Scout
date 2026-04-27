@@ -19,9 +19,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Apify SDK
-        run: npm install apify
-
       - name: Run Apify Integration
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
@@ -38,7 +35,7 @@ jobs:
             scraper.log
 
       - name: Commit results to repo
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-autoCommit-action@v5
         with:
           commit_message: "Update search results"
           file_pattern: search_results.json
