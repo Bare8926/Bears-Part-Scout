@@ -1,73 +1,205 @@
-// Apify Integration - Searches Craigslist, Facebook Marketplace, eBay
-// Runs via GitHub Actions every 6 hours
+#!/usr/bin/env node
+/**
+ * Bears Part Scout - Apify Integration
+ * Searches Craigslist, Facebook Marketplace, eBay, and Google
+ */
 
-const Apify = require('apify');
+const https = require('https');
+const fs = require('fs');
 
-async function runApifyScraper() {
-    const searchTerm = process.argv[2] || "honda civic parts";
-    const results = [];
-    
-    // Run Craigslist Scraper
-    try {
-        const craigslistInput = {
-            "searchTerms": searchTerm,
-            "maxItems": 20,
-            "proxyConfig": { "useApifyProxy": true }
+const APIFY_TOKEN = process.env.APIFY_TOKEN;
+
+// Helper function to make API requests
+function apifyRequest(url, data) {
+    return new Promise((resolve, reject) => {
+        const postData = JSON.stringify(data);
+        const urlObj = new URL(url);
+        
+        const options = {
+            hostname: urlObj.hostname,
+            path: urlObj.pathname + urlObj.search,
+            method: data ? 'POST' : 'GET',
+            headers: {
+                'Authorization': `Bearer ${APIFY_TOKEN}`,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData)
+            }
         };
         
-        const craigslistRun = await Apify.call('ivanvs/craigslist-scraper', craigslistInput);
-        if (craigslistRun.output) {
-            results.push(...craigslistRun.output.map(item => ({
-                ...item,
-                platform: 'Craigslist'
-            })));
-        }
-    } catch(e) {
-        console.log('Craigslist error:', e.message);
-    }
-    
-    // Run Facebook Marketplace Scraper
-    try {
-        const fbInput = {
-            "searchTerm": searchTerm,
-            "maxResults": 20,
-            "proxyConfig": { "useApifyProxy": true }
-        };
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(body));
+                } catch(e) {
+                    resolve(body);
+                }
+            });
+        });
         
-        const fbRun = await Apify.call('apify/facebook-marketplace-scraper', fbInput);
-        if (fbRun.output) {
-            results.push(...fbRun.output.map(item => ({
-                ...item,
-                platform: 'Facebook'
-            })));
-        }
-    } catch(e) {
-        console.log('Facebook error:', e.message);
-    }
-    
-    // Run eBay Scraper
-    try {
-        const ebayInput = {
-            "searchTerm": searchTerm,
-            "maxItems": 20,
-            "proxyConfig": { "useApifyProxy": true }
-        };
+        req.on('error', reject);
         
-        const ebayRun = await Apify.call('ivanvs/ebay-scraper-ppr', ebayInput);
-        if (ebayOutput) {
-            results.push(...ebayOutput.map(item => ({
-                ...item,
-                platform: 'eBay'
-            })));
+        if (data) {
+            req.write(postData);
         }
-    } catch(e) {
-        console.log('eBay error:', e.message);
-    }
-    
-    // Save results
-    const fs = require('fs');
-    fs.writeFileSync('search_results.json', JSON.stringify(results, null, 2));
-    console.log(`Saved ${results.length} results`);
+        req.end();
+    });
 }
 
-runApifyScraper();
+async function searchCraigslist(query, location = "losangeles") {
+    const searchUrl = `https://${location}.craigslist.org/search/sss?query=${encodeURIComponent(query)}`;
+    const url = "https://api.apify.com/v2/acts/ivanvs~craigslist-scraper/run-sync";
+    
+    try {
+        const data = await apifyRequest(url, {
+            urls: [{ url: searchUrl }],
+            maxConcurrency: 1,
+            proxyConfiguration: { useApifyProxy: true }
+        });
+        
+        if (data.data && data.data.defaultDatasetId) {
+            const datasetId = data.data.defaultDatasetId;
+            const itemsUrl = `https://api.apify.com/v2/datasets/${datasetId}/items`;
+            const items = await apifyRequest(itemsUrl);
+            
+            return items.map(item => ({
+                title: item.title || "N/A",
+                price: item.price || "N/A",
+                location: item.location || "N/A",
+                url: item.url || "",
+                date: item.datetime || "",
+                platform: "Craigslist"
+            }));
+        }
+    } catch (e) {
+        console.error("Craigslist error:", e.message);
+    }
+    return [];
+}
+
+async function searchFacebook(query, location = "losangeles") {
+    const searchUrl = `https://www.facebook.com/marketplace/${location}/search/?query=${encodeURIComponent(query)}`;
+    const url = "https://api.apify.com/v2/acts/apify~facebook-marketplace-scraper/run-sync";
+    
+    try {
+        const data = await apifyRequest(url, {
+            facebookUrls: [searchUrl],
+            maxItems: 20
+        });
+        
+        if (data.data && data.data.defaultDatasetId) {
+            const datasetId = data.data.defaultDatasetId;
+            const itemsUrl = `https://api.apify.com/v2/datasets/${datasetId}/items`;
+            const items = await apifyRequest(itemsUrl);
+            
+            return items.map(item => {
+                const price = item.listing_price || {};
+                const priceStr = (price.formatted_amount) ? price.formatted_amount : "N/A";
+                return {
+                    title: item.name || "N/A",
+                    price: priceStr,
+                    location: (item.location && item.location.city) ? item.location.city : "N/A",
+                    url: item.listingUrl || "",
+                    date: item.createdAt || "",
+                    platform: "Facebook"
+                };
+            });
+        }
+    } catch (e) {
+        console.error("Facebook error:", e.message);
+    }
+    return [];
+}
+
+async function searchEbay(query) {
+    const searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`;
+    const url = "https://api.apify.com/v2/acts/dtrungtin~ebay-items-scraper/run-sync";
+    
+    try {
+        const data = await apifyRequest(url, {
+            searchUrl: searchUrl,
+            maxItems: 20
+        });
+        
+        if (data.data && data.data.defaultDatasetId) {
+            const datasetId = data.data.defaultDatasetId;
+            const itemsUrl = `https://api.apify.com/v2/datasets/${datasetId}/items`;
+            const items = await apifyRequest(itemsUrl);
+            
+            return items.map(item => ({
+                title: item.title || "N/A",
+                price: item.price || "N/A",
+                location: item.location || "N/A",
+                url: item.url || "",
+                date: item.date || "",
+                platform: "eBay"
+            }));
+        }
+    } catch (e) {
+        console.error("eBay error:", e.message);
+    }
+    return [];
+}
+
+async function searchGoogle(query) {
+    const url = "https://api.apify.com/v2/acts/apidojo~google-search-scraper/run-sync-get-dataset-items";
+    
+    try {
+        const items = await apifyRequest(url + `?token=${APIFY_TOKEN}&query=${encodeURIComponent(query)}&num=10`);
+        
+        return items.map(item => ({
+            title: item.title || "N/A",
+            url: item.url || "",
+            snippet: item.snippet || "",
+            platform: "Google"
+        }));
+    } catch (e) {
+        console.error("Google error:", e.message);
+    }
+    return [];
+}
+
+async function searchAll(query) {
+    console.log(`Searching for: ${query}`);
+    
+    console.log("Searching Craigslist...");
+    const craigslistResults = await searchCraigslist(query);
+    console.log(`  Found ${craigslistResults.length} results`);
+    
+    console.log("Searching Facebook Marketplace...");
+    const fbResults = await searchFacebook(query);
+    console.log(`  Found ${fbResults.length} results`);
+    
+    console.log("Searching eBay...");
+    const ebayResults = await searchEbay(query);
+    console.log(`  Found ${ebayResults.length} results`);
+    
+    console.log("Searching Google...");
+    const googleResults = await searchGoogle(query);
+    console.log(`  Found ${googleResults.length} results`);
+    
+    const allResults = [...craigslistResults, ...fbResults, ...ebayResults, ...googleResults];
+    
+    const results = {
+        timestamp: new Date().toISOString(),
+        query: query,
+        count: allResults.length,
+        results: allResults
+    };
+    
+    fs.writeFileSync("search_results.json", JSON.stringify(results, null, 2));
+    console.log(`\nTotal: ${allResults.length} results saved to search_results.json`);
+    
+    return results;
+}
+
+// Run from command line
+const query = process.argv.slice(2).join(" ") || "honda civic brake calipers";
+searchAll(query).then(results => {
+    console.log("\nFirst 3 results:");
+    results.results.slice(0, 3).forEach(r => {
+        console.log(`  - ${r.title} (${r.platform})`);
+    });
+}).catch(console.error);
+
