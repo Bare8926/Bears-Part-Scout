@@ -92,9 +92,10 @@ async function searchFacebook(query, location = "losangeles") {
     
     try {
         console.log("  Calling Facebook API...");
-        const data = await apifyRequest(url, {
-            startUrls: [{ url: searchUrl }]
-        });
+       const data = await apifyRequest(url, {
+    startUrls: [{ url: searchUrl }],
+    maxPageLimit: 2
+});
         
         if (data.data && data.data.defaultDatasetId) {
             const datasetId = data.data.defaultDatasetId;
