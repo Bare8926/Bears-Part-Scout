@@ -1146,6 +1146,13 @@
     <button id="logoutBtn" class="btn btn-secondary">Log Out</button>
     <button onclick="accountModal.style.display='none'" class="btn" style="margin-left:10px;">Close</button>
   </div>
-</div>
+</div><script>
+  // When the DOM is ready, wire up the login/account UI
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.initAuthUI) {
+      initAuthUI();   // attaches click handlers, auth listener, etc.
+    }
+  });
+</script>
 </body>
 </html>
