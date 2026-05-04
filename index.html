@@ -1203,7 +1203,12 @@ document.addEventListener('DOMContentLoaded', () => {
     <p>Email: <span id="userEmail"></span></p>
     <p>Tier: <span id="userTier"></span></p>
     <p>Searches used: <span id="userUsage"></span></p>
-    <button id="logoutBtn" class="btn btn-secondary">Log Out</button>
+    <div id="upgradeButtons" style="margin-top: 20px; display: none;">
+    <p style="color: #f4a261; margin-bottom: 10px;">Upgrade for more searches:</p>
+    <a href="https://buy.stripe.com/bJedRbfkLe2P1x46tpbV600" target="_blank" class="btn" style="display: block; margin-bottom: 10px; background: #4a9; text-decoration: none;">Upgrade to Basic ($15/mo)</a>
+    <a href="https://buy.stripe.com/4gM00l3C3gaX4JgdVRbV601" target="_blank" class="btn" style="display: block; background: #e63946; text-decoration: none;">Upgrade to Premium ($30/mo)</a>
+</div>
+<button id="logoutBtn" class="btn btn-secondary" style="margin-top: 20px;">Logout</button>
     <button onclick="accountModal.style.display='none'" class="btn" style="margin-left:10px;">Close</button>
   </div>
 </div><script>
@@ -1248,12 +1253,21 @@ document.addEventListener('DOMContentLoaded', () => {
     <button onclick="accountModal.style.display='none'" class="btn" style="margin-left:10px;">Close</button>
   </div>
 </div><script>
-  // When the DOM is ready, wire up the login/account UI
-  document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     if (window.initAuthUI) {
-      initAuthUI();   // attaches click handlers, auth listener, etc.
+        initAuthUI(); // attaches click handlers, auth listener, etc.
     }
-  });
+    
+    // Update upgrade buttons based on tier
+    setInterval(function() {
+        const tierEl = document.getElementById('userTier');
+        const upgradeEl = document.getElementById('upgradeButtons');
+        if (tierEl && upgradeEl) {
+            const tier = tierEl.textContent || 'free';
+            upgradeEl.style.display = (tier === 'free') ? 'block' : 'none';
+        }
+    }, 500);
+});
 </script>
 </body>
 </html>
