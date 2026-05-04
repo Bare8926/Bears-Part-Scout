@@ -901,14 +901,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Search Parts
-        function searchParts() {
-            const year = document.getElementById('searchYear').value;
-            const make = document.getElementById('searchMake').value;
-            const model = document.getElementById('searchModel').value;
-            const trim = document.getElementById('searchTrim').value;
-            const maxPrice = document.getElementById('searchPrice').value;
-            const part = document.getElementById('searchPart').value || "part";
-            const resultsDiv = document.getElementById('partsResults');
+ async function searchParts() {
+     const canSearch = await checkAndConsumeSearch();
+     if (!canSearch) return;
+     const year = document.getElementById('searchYear').value;
+     const make = document.getElementById('searchMake').value;
+     const model = document.getElementById('searchModel').value;
+     const trim = document.getElementById('searchTrim').value;
+     const maxPrice = document.getElementById('searchPrice').value;
+     const part = document.getElementById('searchPart').value || "part";
+     const resultsDiv = document.getElementById('partsResults');
             
             if (!year || !make || !model) {
                 resultsDiv.innerHTML = '<p style="color: #e63946;">Please fill in Year, Make, and Model.</p>';
@@ -966,10 +968,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 `).join('');
             }, 1000);
         }// Search Vehicles
-        function searchVehicles() {
-            const year = document.getElementById('vehicleYear').value;
-            const make = document.getElementById('vehicleMake').value;
-            const model = document.getElementById('vehicleModel').value;
+ async function searchVehicles() {
+     const canSearch = await checkAndConsumeSearch();
+     if (!canSearch) return;
+     const year = document.getElementById('vehicleYear').value;
+     const make = document.getElementById('vehicleMake').value;
+     const model = document.getElementById('vehicleModel').value;
             const trim = document.getElementById('vehicleTrim').value;
             const maxPrice = document.getElementById('vehiclePrice').value;
             const resultsDiv = document.getElementById('vehicleResults');
