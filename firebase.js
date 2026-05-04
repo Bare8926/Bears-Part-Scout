@@ -1,4 +1,4 @@
-// firebase-auth.js – Firebase init, auth, tier limits
+// firebase.js – Firebase init, auth, tier limits
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword,
@@ -23,10 +23,11 @@ const db = getFirestore(app);
 
 const TIER_LIMITS = {
  free: { searches: 5, maxResults: 20 },
- basic: { searches: 25, maxResults: 50 },
- premium: { searches: 100, maxResults: 100 }
+ basic: { searches: 15, maxResults: 50 },
+ premium: { searches: 50, maxResults: 100 }
 };
 
+/* Helper: check‑and‑consume one search */
 async function checkAndConsumeSearch() {
  const user = auth.currentUser;
  if (!user) { alert('Please log in first.'); return false; }
@@ -40,7 +41,7 @@ async function checkAndConsumeSearch() {
  searchesUsed: 0,
  resetAt: serverTimestamp()
  });
- return checkAndConsumeSearch();
+ return checkAndConsumeSearch(); // retry
  }
 
  const data = snap.data();
@@ -59,6 +60,7 @@ async function checkAndConsumeSearch() {
  return true;
 }
 
+/* UI wiring */
 function initAuthUI() {
  const loginBtn = document.getElementById('loginBtn');
  const accountBtn = document.getElementById('accountBtn');
@@ -71,50 +73,75 @@ function initAuthUI() {
  const userTierSpan = document.getElementById('userTier');
  const userUsageSpan = document.getElementById('userUsage');
 
- if (loginBtn) loginBtn.addEventListener('click', () => { authModal.style.display = 'block'; });
- if (accountBtn) accountBtn.addEventListener('click', () => { accountModal.style.display = 'block'; });
+ if (loginBtn) {
+ loginBtn.addEventListener('click', () => {
+ authModal.style.display = 'block';
+ });
+ }
+
+ if (accountBtn) {
+ accountBtn.addEventListener('click', () => {
+ accountModal.style.display = 'block';
+ });
+ }
 
  window.addEventListener('click', (e) => {
  if (e.target === authModal) authModal.style.display = 'none';
  if (e.target === accountModal) accountModal.style.display = 'none';
  });
 
- if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+ if (logoutBtn) {
+ logoutBtn.addEventListener('click', async () => {
  await signOut(auth);
  accountModal.style.display = 'none';
  });
+ }
 
- if (loginForm) loginForm.addEventListener('submit', async (e) => {
+ if (loginForm) {
+ loginForm.addEventListener('submit', async (e) => {
  e.preventDefault();
  const email = e.target.elements.loginEmail.value;
  const password = e.target.elements.loginPassword.value;
  try {
  await signInWithEmailAndPassword(auth, email, password);
  authModal.style.display = 'none';
- } catch (err) { alert('Login failed: ' + err.message); }
+ } catch (err) {
+ alert('Login failed: ' + err.message);
+ }
  });
+ }
 
- if (signupForm) signupForm.addEventListener('submit', async (e) => {
+ if (signupForm) {
+ signupForm.addEventListener('submit', async (e) => {
  e.preventDefault();
  const email = e.target.elements.signupEmail.value;
  const password = e.target.elements.signupPassword.value;
  try {
  const cred = await createUserWithEmailAndPassword(auth, email, password);
  await setDoc(doc(db, 'users', cred.user.uid), {
- email, tier: 'free', searchesUsed: 0, resetAt: serverTimestamp()
+ email,
+ tier: 'free',
+ searchesUsed: 0,
+ resetAt: serverTimestamp()
  });
  authModal.style.display = 'none';
- } catch (err) { alert('Signup failed: ' + err.message); }
+ } catch (err) {
+ alert('Signup failed: ' + err.message);
+ }
  });
+ }
 
  onAuthStateChanged(auth, async (user) => {
  if (user) {
  if (loginBtn) loginBtn.style.display = 'none';
  if (accountBtn) accountBtn.style.display = 'inline-block';
+
  const snap = await getDoc(doc(db, 'users', user.uid));
  const data = snap?.data() || {};
+
  if (userEmailSpan) userEmailSpan.textContent = data.email || '';
  if (userTierSpan) userTierSpan.textContent = data.tier || 'free';
+
  const limits = TIER_LIMITS[data.tier || 'free'];
  if (userUsageSpan) userUsageSpan.textContent = `${data.searchesUsed || 0} / ${limits.searches}`;
  } else {
